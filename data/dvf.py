@@ -191,8 +191,8 @@ def load_csv(path: str) -> list[dict]:
             row["annee"] = int(row["annee"])
             row["mois"] = int(row["mois"])
             row["pieces"] = int(row["pieces"]) if row["pieces"] else None
-            row["latitude"] = float(row["latitude"]) if row["latitude"] else None
-            row["longitude"] = float(row["longitude"]) if row["longitude"] else None
+            row["latitude"] = float(row["latitude"]) if row.get("latitude") else None
+            row["longitude"] = float(row["longitude"]) if row.get("longitude") else None
             rows.append(row)
     return rows
 
