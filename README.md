@@ -49,7 +49,7 @@ streamlit run app/streamlit_app.py
 
 ## Application deployee
 
-**URL :** <!-- REMPLACEZ PAR VOTRE URL DE DEPLOIEMENT -->
+**URL :** https://embedding-immo.streamlit.app
 
 ## Repartition du travail
 
