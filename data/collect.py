@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.dvf import run_pipeline, load_csv
 
 # Chemin du CSV nettoyé (utilisé par toute l'app)
-CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "raw", "dvf_clean.csv")
+CLEAN_CSV_PATH = os.path.join(os.path.dirname(__file__), "dvf_clean.csv")
 
 
 def get_data(force_refresh: bool = False) -> list[dict]:
