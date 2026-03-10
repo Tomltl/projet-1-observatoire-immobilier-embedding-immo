@@ -55,15 +55,15 @@ streamlit run app/streamlit_app.py
 
 | Membre | Role | Contributions principales |
 |--------|------|--------------------------|
-| Prenom NOM | Data Engineer | ... |
-| Prenom NOM | Data Scientist | ... |
-| Prenom NOM | AI Engineer | ... |
-| Prenom NOM | Frontend / DevOps | ... |
+| Prenom NOM | Data Engineer | TEURROC ALAN |
+| Prenom NOM | Data Scientist | MESSER NOA / ESCOUBOUE MAYEUL |
+| Prenom NOM | AI Engineer | JOUANIQUE SIMON |
+| Prenom NOM | Frontend / DevOps | LETTULIER TOM |
 
 ## Donnees
 
 - **DVF** : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
-- **Annonces** : collectees via [GumLoop / scraper Python] le [DATE]
+- **Annonces** : collectees via BeautifulSoup le 9 Mars 2026
 
 ## References
 
