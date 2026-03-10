@@ -243,7 +243,7 @@ def quick_stats(rows: list[dict]) -> None:
 
 def run_pipeline(output_csv: str = None) -> list[dict]:
     if output_csv is None:
-        output_csv = os.path.join(RAW_DIR, "dvf_clean.csv")
+        output_csv = os.path.join(os.path.dirname(__file__), "dvf_clean.csv")
 
     print("═" * 50)
     print("  PIPELINE DVF — Toulon (83137)")
