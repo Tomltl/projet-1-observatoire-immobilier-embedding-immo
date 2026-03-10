@@ -317,7 +317,8 @@ def enrichir_tout(limit: Optional[int] = None) -> None:
         _mettre_a_jour_csv(sb)
 
 
-CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "annonces.csv")
+CSV_PATH  = os.path.join(os.path.dirname(__file__), "..", "data", "annonces.csv")
+JSON_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "annonces.json")
 
 CSV_COLUMNS = [
     "titre", "prix", "surface", "pieces",
@@ -326,34 +327,74 @@ CSV_COLUMNS = [
     "etat_bien", "score_jeune_couple", "tags", "resume_ia",
 ]
 
+SELECT_FIELDS = (
+    "titre,prix,surface,pieces,quartier,type_bien,lien,source,"
+    "score_marche,etage,parking,balcon,vue_mer,"
+    "etat_bien,score_jeune_couple,tags,resume_ia"
+)
+
+
+def _charger_toutes_annonces(sb) -> list[dict]:
+    """Charge toutes les annonces depuis Supabase avec pagination."""
+    toutes = []
+    offset = 0
+    while True:
+        batch = (
+            sb.table("annonces")
+            .select(SELECT_FIELDS)
+            .order("id")
+            .range(offset, offset + 999)
+            .execute()
+            .data or []
+        )
+        toutes.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += 1000
+    return toutes
+
+
+def _normaliser_row(row: dict) -> dict:
+    """Normalise un enregistrement Supabase pour CSV/JSON."""
+    row["url"] = row.pop("lien", "")
+    if not row.get("prix_m2"):
+        try:
+            row["prix_m2"] = round(float(row["prix"]) / float(row["surface"]), 2)
+        except (TypeError, ValueError, ZeroDivisionError):
+            row["prix_m2"] = None
+    # tags : deserialise si c'est une chaine JSON
+    if isinstance(row.get("tags"), str):
+        try:
+            row["tags"] = json.loads(row["tags"])
+        except (json.JSONDecodeError, TypeError):
+            row["tags"] = []
+    return row
+
 
 def _mettre_a_jour_csv(sb) -> None:
-    """Reecrit annonces.csv avec toutes les donnees enrichies depuis Supabase."""
-    print("\n[CSV] Mise a jour de data/annonces.csv...")
-    res = sb.table("annonces").select(
-        "titre,prix,surface,pieces,quartier,type_bien,lien,source,"
-        "score_marche,etage,parking,balcon,vue_mer,"
-        "etat_bien,score_jeune_couple,tags,resume_ia"
-    ).order("id").execute()
+    """Reecrit annonces.csv avec toutes les donnees depuis Supabase."""
+    print("\n[Fichiers] Mise a jour CSV + JSON...")
+    lignes = _charger_toutes_annonces(sb)
+    annonces = [_normaliser_row(dict(r)) for r in lignes]
 
-    lignes = res.data or []
-    chemin = os.path.abspath(CSV_PATH)
-
-    with open(chemin, "w", newline="", encoding="utf-8") as f:
+    # --- CSV ---
+    chemin_csv = os.path.abspath(CSV_PATH)
+    with open(chemin_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, extrasaction="ignore")
         writer.writeheader()
-        for row in lignes:
-            # lien → url pour le CSV
-            row["url"] = row.pop("lien", "")
-            # prix_m2 calcule si absent
-            if "prix_m2" not in row or not row.get("prix_m2"):
-                try:
-                    row["prix_m2"] = round(float(row["prix"]) / float(row["surface"]), 2)
-                except (TypeError, ValueError, ZeroDivisionError):
-                    row["prix_m2"] = ""
-            writer.writerow(row)
+        for row in annonces:
+            # tags → JSON string pour le CSV
+            row_csv = dict(row)
+            if isinstance(row_csv.get("tags"), list):
+                row_csv["tags"] = json.dumps(row_csv["tags"], ensure_ascii=False)
+            writer.writerow(row_csv)
+    print(f"  [CSV]  {len(annonces)} annonces → {chemin_csv}")
 
-    print(f"[CSV] {len(lignes)} annonces ecrites → {chemin}")
+    # --- JSON ---
+    chemin_json = os.path.abspath(JSON_PATH)
+    with open(chemin_json, "w", encoding="utf-8") as f:
+        json.dump(annonces, f, ensure_ascii=False, indent=2, default=str)
+    print(f"  [JSON] {len(annonces)} annonces → {chemin_json}")
 
 
 def rapport_enrichissement() -> None:
