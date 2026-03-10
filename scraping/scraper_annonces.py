@@ -33,8 +33,11 @@ MAX_RETRIES    = 3
 RETRY_DELAYS   = [2, 5, 15]
 
 CSV_COLUMNS = [
-    "titre", "prix", "surface", "nb_pieces",
+    "titre", "prix", "surface", "pieces",
     "quartier", "type_bien", "prix_m2", "url", "source",
+    # Colonnes d'enrichissement IA (remplies par enrichissement.py)
+    "score_marche", "etage", "parking", "balcon", "vue_mer",
+    "etat_bien", "score_jeune_couple", "tags", "resume_ia",
 ]
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "annonces.csv")
@@ -170,7 +173,7 @@ def scrape_bienici(max_pages: int = MAX_PAGES) -> list[dict]:
                     "titre":     titre,
                     "prix":      int(prix) if prix is not None else 0,
                     "surface":   float(surface) if surface is not None else 0.0,
-                    "nb_pieces": int(rooms) if rooms else 0,
+                    "pieces":    int(rooms) if rooms else 0,
                     "quartier":  quartier,
                     "type_bien": type_bien,
                     "url":       annonce_url,
@@ -268,7 +271,7 @@ def nettoyer(annonces: list[dict]) -> list[dict]:
             "titre":     titre,
             "prix":      prix,
             "surface":   surface,
-            "nb_pieces": ann.get("nb_pieces", 0),
+            "pieces":    ann.get("pieces", 0),
             "quartier":  ann.get("quartier", ""),
             "type_bien": type_bien,
             "prix_m2":   prix_m2,
@@ -309,7 +312,7 @@ def sauvegarder_csv(annonces: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 
 def envoyer_supabase(annonces: list[dict]) -> None:
-    """Upsert vers Supabase table `annonces`. Mapping : url→lien, nb_pieces→pieces.
+    """Upsert vers Supabase table `annonces`. Mapping : url→lien.
     - batch_size = BATCH_SIZE (100)
     - Retry 3 fois avec backoff RETRY_DELAYS
     - Vérification count post-upsert
@@ -328,7 +331,7 @@ def envoyer_supabase(annonces: list[dict]) -> None:
             "titre":     a.get("titre", ""),
             "prix":      a.get("prix", 0),
             "surface":   a.get("surface", 0.0),
-            "pieces":    a.get("nb_pieces", 0),
+            "pieces":    a.get("pieces", 0),
             "quartier":  a.get("quartier", ""),
             "type_bien": a.get("type_bien", ""),
             "lien":      a.get("url", ""),

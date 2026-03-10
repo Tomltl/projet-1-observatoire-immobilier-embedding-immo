@@ -312,6 +312,49 @@ def enrichir_tout(limit: Optional[int] = None) -> None:
     print(f"  Erreurs   : {erreurs}")
     print(f"{'='*60}")
 
+    # Mise a jour du CSV avec les donnees enrichies depuis Supabase
+    if ok > 0:
+        _mettre_a_jour_csv(sb)
+
+
+CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "annonces.csv")
+
+CSV_COLUMNS = [
+    "titre", "prix", "surface", "pieces",
+    "quartier", "type_bien", "prix_m2", "url", "source",
+    "score_marche", "etage", "parking", "balcon", "vue_mer",
+    "etat_bien", "score_jeune_couple", "tags", "resume_ia",
+]
+
+
+def _mettre_a_jour_csv(sb) -> None:
+    """Reecrit annonces.csv avec toutes les donnees enrichies depuis Supabase."""
+    print("\n[CSV] Mise a jour de data/annonces.csv...")
+    res = sb.table("annonces").select(
+        "titre,prix,surface,pieces,quartier,type_bien,lien,source,"
+        "score_marche,etage,parking,balcon,vue_mer,"
+        "etat_bien,score_jeune_couple,tags,resume_ia"
+    ).order("id").execute()
+
+    lignes = res.data or []
+    chemin = os.path.abspath(CSV_PATH)
+
+    with open(chemin, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        for row in lignes:
+            # lien → url pour le CSV
+            row["url"] = row.pop("lien", "")
+            # prix_m2 calcule si absent
+            if "prix_m2" not in row or not row.get("prix_m2"):
+                try:
+                    row["prix_m2"] = round(float(row["prix"]) / float(row["surface"]), 2)
+                except (TypeError, ValueError, ZeroDivisionError):
+                    row["prix_m2"] = ""
+            writer.writerow(row)
+
+    print(f"[CSV] {len(lignes)} annonces ecrites → {chemin}")
+
 
 def rapport_enrichissement() -> None:
     """Affiche un rapport sur les donnees enrichies dans Supabase."""
