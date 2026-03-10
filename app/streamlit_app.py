@@ -11,6 +11,7 @@ import pandas as pd
 from data.collect import get_data
 from analysis.stats import mean, median, standard_deviation, correlation
 from analysis.regression import least_squares_fit, r_squared, predict
+from knn import knn_similar
 
 # ── Configuration ────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -124,6 +125,50 @@ k4.metric("Annonces actives",        f"{len(filtered_ann):,}")
 k5.metric("Prix/m² annonces moyen", f"{mean(ann_pm2):,.0f} €/m²" if ann_pm2 else "—")
 
 st.divider()
+
+# ── Helpers d'affichage (utilisés dans Tab 5 et Tab 6) ───────────────────────
+
+def _tags(a: dict) -> list[str]:
+    t = a.get("tags") or []
+    return t if isinstance(t, list) else []
+
+
+def _render_annonce_card(a: dict, score: int) -> None:
+    """Affiche une carte annonce."""
+    tags   = _tags(a)
+    url    = a.get("url", "#")
+    titre  = a.get("titre", "Annonce")
+    badges = []
+    if a.get("vue_mer"):              badges.append("🌊 Vue mer")
+    if a.get("parking"):              badges.append("🅿️ Parking")
+    if a.get("balcon"):               badges.append("🪴 Balcon")
+    if "grande_terrasse" in tags:     badges.append("☀️ Terrasse")
+    if "calme"           in tags:     badges.append("🤫 Calme")
+    if "lumineux"        in tags:     badges.append("💡 Lumineux")
+    etat_labels = {
+        "neuf": "🟢 Neuf", "bon_etat": "🟢 Bon état",
+        "a_rafraichir": "🟡 À rafraîchir",
+        "travaux_importants": "🔴 Travaux importants",
+    }
+    etat = etat_labels.get(a.get("etat_bien", ""), "")
+
+    with st.container(border=True):
+        col_info, col_prix = st.columns([3, 1])
+        with col_info:
+            st.markdown(f"**[{titre}]({url})**")
+            st.caption(
+                f"{a.get('quartier','')} · {a.get('type_bien','')} · "
+                f"{a.get('pieces','')} pièces · {a.get('surface',0):.0f} m²"
+                + (f" · {etat}" if etat else "")
+            )
+            if badges:
+                st.caption("  ".join(badges))
+        with col_prix:
+            st.metric("Prix", f"{a.get('prix',0):,.0f} €")
+            st.metric("Prix/m²", f"{a.get('prix_m2',0):,.0f} €/m²")
+        if a.get("resume_ia"):
+            st.caption(f"💬 {a['resume_ia']}")
+
 
 # ── Onglets ───────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -407,39 +452,57 @@ with tab5:
 
         st.divider()
 
-        # ── Tableau des annonces ──────────────────────────────────────────────
+        # ── Tableau des annonces + KNN ────────────────────────────────────────
         st.subheader("Liste des annonces")
 
-        ann_rows = []
-        for a in filtered_ann:
-            ann_rows.append({
-                "Titre":          a.get("titre", ""),
-                "Quartier":       a.get("quartier", ""),
-                "Type":           a.get("type_bien", ""),
-                "Pièces":         a.get("pieces", ""),
-                "Surface":        f"{a['surface']:.0f} m²",
-                "Prix":           f"{a['prix']:,.0f} €",
-                "Prix/m²":        f"{a['prix_m2']:,.0f} €/m²",
-                "Score marché":   a.get("score_marche", ""),
-                "Score couple":   a.get("score_jeune_couple", ""),
-                "Vue mer":        "✓" if a.get("vue_mer") else "",
-                "Parking":        "✓" if a.get("parking")  else "",
-                "Balcon":         "✓" if a.get("balcon")   else "",
-                "État":           a.get("etat_bien", ""),
-                "Source":         a.get("source", ""),
-                "Lien":           a.get("url", ""),
-            })
+        col_table, col_knn = st.columns([3, 2])
 
-        df_ann = pd.DataFrame(ann_rows)
+        with col_table:
+            ann_rows = []
+            for a in filtered_ann:
+                ann_rows.append({
+                    "Titre":        a.get("titre", ""),
+                    "Quartier":     a.get("quartier", ""),
+                    "Type":         a.get("type_bien", ""),
+                    "Pièces":       a.get("pieces", ""),
+                    "Surface":      f"{a['surface']:.0f} m²",
+                    "Prix":         f"{a['prix']:,.0f} €",
+                    "Prix/m²":      f"{a['prix_m2']:,.0f} €/m²",
+                    "Score marché": a.get("score_marche", ""),
+                    "Score couple": a.get("score_jeune_couple", ""),
+                    "Vue mer":      "✓" if a.get("vue_mer") else "",
+                    "Parking":      "✓" if a.get("parking")  else "",
+                    "Balcon":       "✓" if a.get("balcon")   else "",
+                    "État":         a.get("etat_bien", ""),
+                    "Source":       a.get("source", ""),
+                })
 
-        st.dataframe(
-            df_ann,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Lien": st.column_config.LinkColumn("Lien", display_text="Voir"),
-            },
-        )
+            df_ann = pd.DataFrame(ann_rows)
+            event = st.dataframe(
+                df_ann,
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single-row",
+            )
+            st.caption("Cliquez une ligne pour voir les biens similaires →")
+
+        with col_knn:
+            sel_rows = event.selection.rows
+            if not sel_rows:
+                st.info("Sélectionnez une annonce dans le tableau pour découvrir les biens similaires disponibles.")
+            else:
+                cible = filtered_ann[sel_rows[0]]
+
+                st.markdown("**Annonce sélectionnée**")
+                _render_annonce_card(cible, score=0)
+
+                st.divider()
+                st.markdown("**5 biens similaires disponibles**")
+
+                voisins = knn_similar(cible, annonces, k=5)
+                for v in voisins:
+                    _render_annonce_card(v, score=0)
 
         # ── Résumés IA ────────────────────────────────────────────────────────
         with st.expander("💬 Résumés IA des annonces"):
@@ -474,10 +537,6 @@ with tab5:
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 6 · Profils
 # ─────────────────────────────────────────────────────────────────────────────
-
-def _tags(a: dict) -> list[str]:
-    t = a.get("tags") or []
-    return t if isinstance(t, list) else []
 
 def _score_jeune_couple(a: dict) -> int:
     """Jeune couple primo-accédant : budget ≤ 200 k€, 2-3 pièces, 35-75 m²."""
@@ -545,43 +604,6 @@ def _score_retraite(a: dict) -> int:
     if "coup_de_coeur"  in tags:               score += 8
     if "lumineux"       in tags:               score += 8
     return score
-
-
-def _render_annonce_card(a: dict, score: int) -> None:
-    """Affiche une carte annonce dans l'onglet Profils."""
-    tags   = _tags(a)
-    url    = a.get("url", "#")
-    titre  = a.get("titre", "Annonce")
-    badges = []
-    if a.get("vue_mer"):    badges.append("🌊 Vue mer")
-    if a.get("parking"):    badges.append("🅿️ Parking")
-    if a.get("balcon"):     badges.append("🪴 Balcon")
-    if "grande_terrasse" in tags: badges.append("☀️ Terrasse")
-    if "calme"           in tags: badges.append("🤫 Calme")
-    if "lumineux"        in tags: badges.append("💡 Lumineux")
-    etat_labels = {
-        "neuf": "🟢 Neuf", "bon_etat": "🟢 Bon état",
-        "a_rafraichir": "🟡 À rafraîchir",
-        "travaux_importants": "🔴 Travaux importants",
-    }
-    etat = etat_labels.get(a.get("etat_bien", ""), "")
-
-    with st.container(border=True):
-        col_info, col_prix = st.columns([3, 1])
-        with col_info:
-            st.markdown(f"**[{titre}]({url})**")
-            st.caption(
-                f"{a.get('quartier','')} · {a.get('type_bien','')} · "
-                f"{a.get('pieces','')} pièces · {a.get('surface',0):.0f} m²"
-                + (f" · {etat}" if etat else "")
-            )
-            if badges:
-                st.caption("  ".join(badges))
-        with col_prix:
-            st.metric("Prix", f"{a.get('prix',0):,.0f} €")
-            st.metric("Prix/m²", f"{a.get('prix_m2',0):,.0f} €/m²")
-        if a.get("resume_ia"):
-            st.caption(f"💬 {a['resume_ia']}")
 
 
 PROFILS = [

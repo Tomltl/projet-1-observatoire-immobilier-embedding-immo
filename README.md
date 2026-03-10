@@ -86,6 +86,10 @@ champs = enrichir_annonce_heuristique(annonce, score_stat="Opportunite")
 # → {"score_jeune_couple": 4, "etat_bien": "inconnu", "tags": '["vue_mer", "parking_inclus"]', ...}
 ```
 
+## Suggestions de biens similaires (k-NN)
+
+Dans l'onglet **Annonces actives**, cliquer sur une annonce affiche 5 biens similaires calculés par un k-NN from scratch (`knn/`) : distance euclidienne pondérée et normalisée sur `prix_m2` (×2), `type_bien` (×2), `surface` (×1.5), `quartier` (×1.5) et `pieces` (×1).
+
 ## References
 
 - Joel Grus, *Data Science From Scratch*, ch.5 (statistiques) et ch.14 (regression)

@@ -25,11 +25,9 @@ def _empreinte(bien: dict) -> tuple:
     On utilise (date, prix, surface) plutôt qu'un id car les deux sources
     (DVF et Bienici) n'ont pas de champ id commun.
     """
-    return (
-        bien.get("date", ""),
-        bien.get("prix", 0),
-        bien.get("surface", 0.0),
-    )
+    if bien.get("url"):
+        return ("url", bien["url"])
+    return ("dvf", bien.get("date", ""), bien.get("prix", 0), bien.get("surface", 0.0))
 
 
 # ---------------------------------------------------------------------------
