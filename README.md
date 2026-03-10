@@ -65,6 +65,27 @@ streamlit run app/streamlit_app.py
 - **DVF** : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
 - **Annonces** : collectees via BeautifulSoup le 9 Mars 2026
 
+## Scoring heuristique (sans IA)
+
+Le module `scraping/scoring.py` propose un scoring des annonces entierement base sur des regles metier, sans appel a une API IA. Il produit les memes champs que l'enrichissement Claude (`score_marche`, `etat_bien`, `score_jeune_couple`, `tags`...).
+
+```bash
+# Enrichir toutes les annonces non encore traitees
+python -m scraping.scoring
+
+# Limiter a 50 annonces (test)
+python -m scraping.scoring --limit 50
+```
+
+```python
+# Utilisation directe dans du code
+from scraping.scoring import enrichir_annonce_heuristique
+
+annonce = {"titre": "Appartement vue mer avec parking", "prix": 195000, "surface": 48, "pieces": 3}
+champs = enrichir_annonce_heuristique(annonce, score_stat="Opportunite")
+# → {"score_jeune_couple": 4, "etat_bien": "inconnu", "tags": '["vue_mer", "parking_inclus"]', ...}
+```
+
 ## References
 
 - Joel Grus, *Data Science From Scratch*, ch.5 (statistiques) et ch.14 (regression)
