@@ -148,7 +148,8 @@ filtered = [
 # ── Filtrage annonces ─────────────────────────────────────────────────────────
 filtered_ann = [
     a for a in annonces
-    if a.get("quartier",   "") in sel_quartiers
+    if a.get("url", "").strip() not in ("", "#")
+    and a.get("quartier",   "") in sel_quartiers
     and a.get("type_bien", "") in sel_types
     and pieces_to_typo(a.get("pieces", 0)) in sel_typos
     and prix_min <= a.get("prix",    0) <= prix_max
