@@ -7,3 +7,5 @@ python-dotenv
 pytest
 lxml
 anthropic
+folium
+streamlit-folium
