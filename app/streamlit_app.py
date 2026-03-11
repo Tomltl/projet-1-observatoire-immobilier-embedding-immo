@@ -5,11 +5,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-import math
 import streamlit as st
 import pandas as pd
-import folium
-from streamlit_folium import st_folium
 
 from data.collect import get_data
 from analysis.stats import mean, median, standard_deviation, correlation
@@ -97,109 +94,6 @@ def pieces_to_typo(pieces: int) -> str:
     if pieces <= 0: return "T1"
     if pieces >= 5: return "T5+"
     return f"T{pieces}"
-
-# ── Coordonnées GPS des quartiers de Toulon ───────────────────────────────────
-QUARTIER_COORDS: dict[str, tuple[float, float]] = {
-    # Centre
-    "Centre-ville":               (43.1247, 5.9285),
-    "Haute-ville":                (43.1265, 5.9243),
-    "Le Port":                    (43.1210, 5.9250),
-    "Place d'Armes":              (43.1225, 5.9260),
-    "Champs-de-Mars":             (43.1265, 5.9315),
-    "Aguillon":                   (43.1230, 5.9300),
-    # Est / Mourillon
-    "Mourillon-Centre":           (43.1192, 5.9470),
-    "Le Mourillon - La Mitre - Fort Lamalgue": (43.1175, 5.9520),
-    "Brunet":                     (43.1290, 5.9400),
-    "Beaulieu":                   (43.1305, 5.9360),
-    "Darboussèdes":               (43.1325, 5.9420),
-    "Jonquet - Guynemer":         (43.1340, 5.9550),
-    "TOULON EST":                 (43.1250, 5.9550),
-    "Les Ameniers":               (43.1395, 5.9580),
-    "La Roseraie":                (43.1175, 5.9360),
-    # Cap Brun
-    "Cap Brun":                   (43.1115, 5.9630),
-    "Cap-Brun":                   (43.1115, 5.9630),
-    "Le Cap Brun - Le Petit Bois":(43.1110, 5.9600),
-    # Nord-Est
-    "Saint Jean du Var":          (43.1375, 5.9450),
-    "Saint-Jean du Var":          (43.1375, 5.9450),
-    "La Loubière":                (43.1380, 5.9300),
-    "Toulon 83000 La Loubière":   (43.1380, 5.9300),
-    "Corniche du Faron":          (43.1400, 5.9340),
-    "bas Faron":                  (43.1445, 5.9380),
-    "Ubac - Dardennes - Barbasse - Mont Faron": (43.1505, 5.9300),
-    "La Chapelle - Saint-André":  (43.1250, 5.9185),
-    "Siblas":                     (43.1400, 5.9210),
-    "Toulon 83000 Siblas":        (43.1400, 5.9210),
-    # Nord
-    "Font Pré":                   (43.1350, 5.9300),
-    "La Palasse":                 (43.1420, 5.9160),
-    "Claret":                     (43.1430, 5.9010),
-    "Valbertrand":                (43.1460, 5.8960),
-    "Valbourdin":                 (43.1480, 5.9000),
-    "Les Quatre Chemins":         (43.1450, 5.9050),
-    "Pont de Bois":               (43.1355, 5.9060),
-    "Pont de Suve":               (43.1305, 5.9025),
-    # Ouest
-    "Barbès":                     (43.1275, 5.9110),
-    "Toulon 83000 Barbès":        (43.1275, 5.9110),
-    "Saint-Roch":                 (43.1330, 5.9155),
-    "Saint Roch":                 (43.1330, 5.9155),
-    "Toulon 83000 Saint-Roch":    (43.1330, 5.9155),
-    "Toulon 83200 Saint-Roch":    (43.1330, 5.9155),
-    "Le Fort Rouge":              (43.1292, 5.9155),
-    "Bon Rencontre":              (43.1285, 5.9185),
-    "La Rode":                    (43.1325, 5.9060),
-    "Toulon 83000 La Rode":       (43.1325, 5.9060),
-    "Porte d'Italie":             (43.1230, 5.9185),
-    "La Serinette":               (43.1150, 5.9105),
-    "La Serinette - La Barre":    (43.1150, 5.9105),
-    "Rodeilhac":                  (43.1155, 5.9205),
-    "L'Escaillon":                (43.1155, 5.9305),
-    # Nord-Ouest
-    "Les Routes":                 (43.1415, 5.9085),
-    "Toulon 83200 Les Routes":    (43.1415, 5.9085),
-    "Pont du Las":                (43.1385, 5.9125),
-    "Toulon 83200 Pont du Las":   (43.1385, 5.9125),
-    "Sainte-Anne":                (43.1360, 5.9210),
-    "Toulon 83000 Sainte-Anne":   (43.1360, 5.9210),
-    "Les Lices":                  (43.1285, 5.9335),
-    "Toulon 83000 Les Lices":     (43.1285, 5.9335),
-    "Sainte-Musse":               (43.1210, 5.9060),
-    "Sainte Musse":               (43.1210, 5.9060),
-    "La Garde":                   (43.1255, 5.9845),
-    "La Garde a 6km De Toulon":   (43.1255, 5.9845),
-    # Génériques
-    "Toulon":                     (43.1247, 5.9285),
-    "Toulon 83000 Haute-ville":   (43.1265, 5.9243),
-    "Toulon 83000 Le Mourillon":  (43.1192, 5.9470),
-    "Bon Rencontre":              (43.1285, 5.9185),
-    "Hyères 83400 les Palmiers":  (43.1195, 6.1280),
-}
-
-DEFAULT_COORD = (43.1247, 5.9285)  # Centre de Toulon par défaut
-
-
-def _get_coords(quartier: str, idx: int = 0) -> tuple[float, float]:
-    """Retourne les coordonnées GPS d'un quartier avec un léger décalage déterministe."""
-    lat, lon = QUARTIER_COORDS.get(quartier, DEFAULT_COORD)
-    # Jitter déterministe basé sur l'index (±~250m max)
-    jitter = 0.0025
-    lat += (math.sin(idx * 127.1 + 311.7) % 1 - 0.5) * jitter
-    lon += (math.cos(idx * 91.3  + 214.5) % 1 - 0.5) * jitter
-    return lat, lon
-
-
-def _price_color(prix: float, p33: float, p66: float) -> str:
-    """Retourne une couleur hex selon le prix (bleu clair = moins cher, bleu foncé = plus cher)."""
-    if prix <= p33:
-        return "#64B5F6"   # bleu clair — prix attractif
-    elif prix <= p66:
-        return "#1976D2"   # bleu moyen
-    else:
-        return "#0D47A1"   # bleu foncé — prix élevé
-
 
 # ── Sidebar : filtres ─────────────────────────────────────────────────────────
 with st.sidebar:
@@ -370,14 +264,13 @@ def _render_annonce_card(a: dict, score: int) -> None:
 
 
 # ── Onglets ───────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab5, tab1, tab2, tab3, tab4, tab6 = st.tabs([
+    "🏷️ Annonces actives",
     "📊 Par quartier",
     "📈 Tendances",
     "📐 Régression",
     "🗃️ Données DVF",
-    "🏷️ Annonces actives",
     "👤 Profils acheteurs",
-    "🗺️ Carte",
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -446,45 +339,6 @@ with tab1:
     type_df  = type_df[(type_df["DVF"] > 0) | (type_df["Annonces"] > 0)]
     if not type_df.empty:
         st.bar_chart(type_df, color=["#1976D2", "#42A5F5"])
-
-    # ── Meilleures annonces pour jeune couple ─────────────────────────────────
-    st.divider()
-    st.subheader("🧑‍🤝‍🧑 Meilleures annonces — Jeune couple")
-    st.caption("Annonces actives triées par score couple décroissant (tous quartiers confondus).")
-
-    ann_couples = sorted(
-        [a for a in filtered_ann if a.get("score_jeune_couple") is not None],
-        key=lambda a: a.get("score_jeune_couple", 0),
-        reverse=True,
-    )
-
-    if not ann_couples:
-        st.info("Aucune annonce disponible avec les filtres actuels.")
-    else:
-        PAGE_COUPLE = 5
-        nb_pages_c  = max(1, -(-len(ann_couples) // PAGE_COUPLE))
-
-        col_pg_c, _ = st.columns([1, 3])
-        with col_pg_c:
-            if nb_pages_c > 1:
-                page_couple = st.number_input(
-                    f"Page (1–{nb_pages_c})",
-                    min_value=1, max_value=nb_pages_c, value=1, step=1,
-                    key="page_couple_tab1",
-                )
-            else:
-                page_couple = 1
-
-        debut_c = (page_couple - 1) * PAGE_COUPLE
-        fin_c   = debut_c + PAGE_COUPLE
-        st.caption(f"{debut_c + 1}–{min(fin_c, len(ann_couples))} sur {len(ann_couples)} annonces")
-
-        for rank, a in enumerate(ann_couples[debut_c:fin_c], start=debut_c + 1):
-            col_rk, col_cd = st.columns([1, 10])
-            with col_rk:
-                st.markdown(f"### #{rank}")
-            with col_cd:
-                _render_annonce_card(a, score=a.get("score_jeune_couple", 0))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 2 · Tendances
@@ -675,6 +529,50 @@ with tab5:
     if not filtered_ann:
         st.info("Aucune annonce ne correspond aux filtres sélectionnés.")
     else:
+        # ── Top annonces triées par score ─────────────────────────────────────
+        SCORE_MARCHE_ORDER = {"Opportunite": 2, "Prix marche": 1}
+
+        def _sort_key(a: dict):
+            return (
+                SCORE_MARCHE_ORDER.get(a.get("score_marche", ""), 0),
+                a.get("score_jeune_couple", 0) or 0,
+            )
+
+        sorted_ann = sorted(filtered_ann, key=_sort_key, reverse=True)
+
+        st.subheader("🏆 Meilleures annonces")
+        st.caption("Triées par score marché (Opportunité en tête) puis par score couple décroissant.")
+
+        PAGE_SIZE_TOP = 10
+        nb_pages_top  = max(1, -(-len(sorted_ann) // PAGE_SIZE_TOP))
+
+        col_pg_l, col_pg_m, col_pg_r = st.columns([1, 2, 1])
+        with col_pg_m:
+            if nb_pages_top > 1:
+                page_top = st.number_input(
+                    f"Page (1–{nb_pages_top})",
+                    min_value=1, max_value=nb_pages_top, value=1, step=1,
+                    key="page_top",
+                )
+            else:
+                page_top = 1
+
+        debut_top = (page_top - 1) * PAGE_SIZE_TOP
+        fin_top   = debut_top + PAGE_SIZE_TOP
+        st.caption(
+            f"Affichage {debut_top + 1}–{min(fin_top, len(sorted_ann))} "
+            f"sur {len(sorted_ann)} annonces"
+        )
+
+        for rank, a in enumerate(sorted_ann[debut_top:fin_top], debut_top + 1):
+            col_rank, col_card = st.columns([1, 11])
+            with col_rank:
+                st.markdown(f"### #{rank}")
+            with col_card:
+                _render_annonce_card(a, score=a.get("score_jeune_couple", 0) or 0)
+
+        st.divider()
+
         # ── Comparaison DVF vs Annonces ───────────────────────────────────────
         if prix_m2_all and ann_pm2:
             dvf_median  = median(prix_m2_all)
@@ -947,117 +845,3 @@ with tab6:
                         st.markdown(f"### #{rank}")
                     with col_card:
                         _render_annonce_card(a, score)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TAB 7 · Carte
-# ─────────────────────────────────────────────────────────────────────────────
-with tab7:
-    st.subheader("Carte des annonces par quartier")
-    st.caption("Sélectionnez un quartier pour visualiser les biens en vente sur la carte.")
-
-    # Quartiers qui ont des annonces (avec coordonnées connues en priorité)
-    quartiers_avec_ann = sorted({
-        a["quartier"] for a in annonces if a.get("quartier") and a.get("prix", 0) > 0
-    })
-
-    col_sel, col_info = st.columns([2, 3])
-    with col_sel:
-        sel_quartier_map = st.selectbox(
-            "Quartier",
-            quartiers_avec_ann,
-            index=quartiers_avec_ann.index("Centre-ville") if "Centre-ville" in quartiers_avec_ann else 0,
-            key="map_quartier",
-        )
-    with col_info:
-        nb_ann_q = sum(1 for a in annonces if a.get("quartier") == sel_quartier_map)
-        st.metric("Annonces dans ce quartier", nb_ann_q)
-
-    ann_map = [a for a in annonces if a.get("quartier") == sel_quartier_map and a.get("prix", 0) > 0]
-
-    if not ann_map:
-        st.info("Aucune annonce disponible dans ce quartier.")
-    else:
-        prices_map = [a["prix"] for a in ann_map]
-        p33 = sorted(prices_map)[len(prices_map) // 3]
-        p66 = sorted(prices_map)[2 * len(prices_map) // 3]
-
-        # ── Légende couleur ───────────────────────────────────────────────────
-        leg1, leg2, leg3, _ = st.columns([1, 1, 1, 3])
-        leg1.markdown(
-            '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;'
-            f'background:#64B5F6;margin-right:6px"></span>'
-            f'Prix attractif (≤ {p33:,.0f} €)',
-            unsafe_allow_html=True,
-        )
-        leg2.markdown(
-            '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;'
-            f'background:#1976D2;margin-right:6px"></span>'
-            f'Prix moyen',
-            unsafe_allow_html=True,
-        )
-        leg3.markdown(
-            '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;'
-            f'background:#0D47A1;margin-right:6px"></span>'
-            f'Prix élevé (> {p66:,.0f} €)',
-            unsafe_allow_html=True,
-        )
-
-        # ── Construction de la carte folium ───────────────────────────────────
-        center_lat, center_lon = QUARTIER_COORDS.get(sel_quartier_map, DEFAULT_COORD)
-        fmap = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=15,
-            tiles="CartoDB positron",
-        )
-
-        for idx, a in enumerate(ann_map):
-            lat, lon = _get_coords(sel_quartier_map, idx)
-            color    = _price_color(a["prix"], p33, p66)
-            popup_html = (
-                f"<b>{a.get('titre', 'Annonce')}</b><br>"
-                f"{a.get('type_bien','').capitalize()} · {a.get('pieces','')} pièces · {a.get('surface',0):.0f} m²<br>"
-                f"<b style='color:{color}'>{a['prix']:,.0f} €</b> — {a.get('prix_m2',0):,.0f} €/m²<br>"
-                f"État : {ETAT_LABELS.get(a.get('etat_bien',''), a.get('etat_bien','—'))}<br>"
-                + (f"Score couple : {SCORE_STARS.get(a.get('score_jeune_couple'))}<br>"
-                   if a.get('score_jeune_couple') else "")
-                + (f"<a href='{a['url']}' target='_blank'>Voir l'annonce →</a>"
-                   if a.get('url') else "")
-            )
-            folium.CircleMarker(
-                location=[lat, lon],
-                radius=9,
-                color="white",
-                weight=1.5,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.85,
-                popup=folium.Popup(popup_html, max_width=280),
-                tooltip=f"{a['prix']:,.0f} € · {a.get('surface',0):.0f} m²",
-            ).add_to(fmap)
-
-        st_folium(fmap, use_container_width=True, height=520, returned_objects=[])
-
-        # ── Tableau récapitulatif du quartier ─────────────────────────────────
-        st.divider()
-        st.markdown(f"**{len(ann_map)} annonces dans {sel_quartier_map}**")
-
-        df_map = pd.DataFrame([{
-            "Titre":        a.get("titre", ""),
-            "Type":         a.get("type_bien", "").capitalize(),
-            "Pièces":       a.get("pieces", ""),
-            "Surface":      f"{a.get('surface', 0):.0f} m²",
-            "Prix":         a["prix"],
-            "Prix/m²":      a.get("prix_m2", 0),
-            "Score couple": a.get("score_jeune_couple", ""),
-            "État":         ETAT_LABELS.get(a.get("etat_bien", ""), a.get("etat_bien", "—")),
-        } for a in sorted(ann_map, key=lambda x: x["prix"])]).reset_index(drop=True)
-
-        st.dataframe(
-            df_map,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Prix":    st.column_config.NumberColumn("Prix (€)", format="%d €"),
-                "Prix/m²": st.column_config.NumberColumn("Prix/m² (€)", format="%d €"),
-            },
-        )
